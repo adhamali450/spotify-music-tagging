@@ -1,7 +1,7 @@
 from directory_tree import display_tree
 import re
 import os
-from utils import rm_common
+from utils import remove_common
 from format import format_title, album_profile, track_profile
 
 __artist_dir = None
@@ -38,16 +38,18 @@ def fetch_local_albums(miscs=[], exclude=[], format=True):
 
         if album not in miscs:
 
-            title = format_title(album, album_profile) if format else album
-            albums.append((title, os.path.join(__artist_dir, album)))
+            # title = format_title(album, album_profile) if format else album
+            albums.append((album, os.path.join(__artist_dir, album)))
         else:
             utils_path = os.path.join(__artist_dir, album)
 
             for album in os.listdir(utils_path):
-                title = format_title(album, album_profile) if format else album
-                albums.append((title, os.path.join(utils_path, album)))
+                # title = format_title(album, album_profile) if format else album
+                albums.append((album, os.path.join(utils_path, album)))
 
-    return [(rm_common(album[0], [album[0] for album in albums]), album[1]) for album in albums]
+    clean_albums = remove_common([album[0] for album in albums])
+    return [(clean_albums[i], albums[i][1]) for i in range(len(albums))]
+    # return [(rm_common(album[0], [album[0] for album in albums]), album[1]) for album in albums]
 
 
 def fetch_local_tracks(album_path):

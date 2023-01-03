@@ -3,7 +3,7 @@ import music_tag
 import re
 import math
 import os
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import word_tokenize, wordpunct_tokenize
 from collections import Counter
 from difflib import SequenceMatcher
 from format import format_title, track_profile
@@ -147,7 +147,7 @@ def get_corresponding_release(local_release: str, sp_releases: list, release_typ
     profile = track_profile if release_type == 'track' else format.album_profile
     local_release = __norm_release(format_title(local_release, profile))
 
-    norm_sp_releases = rm_common(sp_releases)
+    norm_sp_releases = remove_common(sp_releases)
     for rel in norm_sp_releases:
         rel = __norm_release(format_title(rel, profile))
 
@@ -174,15 +174,15 @@ def __common(ref: list, threshold: int) -> dict:
     for i in range(len(ref)):
         ref[i] = ref[i].replace('_', '')
 
-        if '.' in ref[i]:
-            last_dot = ref[i].rindex('.')
-            ref[i] = ref[i][:last_dot - 1] + ' ' + ref[i][last_dot:]
+        # if '.' in ref[i]:
+        #     last_dot = ref[i].rindex('.')
+        #     ref[i] = ref[i][:last_dot - 1] + ' ' + ref[i][last_dot:]
 
     common = {}
 
     freq = {}
     for item in ref:
-        words = word_tokenize(item)
+        words = set(wordpunct_tokenize(item))
         for word in words:
             if word not in freq:
                 freq[word] = 0
@@ -213,7 +213,7 @@ def rm_common(str: str, ref: list, threshold: int = 0.9) -> str:
     return str
 
 
-def rm_common(list: list, threshold: int = 0.9) -> list:
+def remove_common(list: list, threshold: int = 0.9) -> list:
     '''
     Remove all occurances of substrings present in ALL strings in a list\n
     e.g, \n

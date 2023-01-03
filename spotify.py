@@ -5,7 +5,7 @@ from utils import *
 os.system('cls || clear')
 
 # temporary token for testing
-TOKEN = 'BQA4zQLMQhd-yJ5nUlScfgeEk7Bqi5cgov_IzyM_9D6r-_e8R5LmTLl_mCFkoyLuAn61BulA1KYpNDnpZtefxkVTrtHu7POTvrROOlQ73ohTtQ2-WNQroX2E5lkfRI6pSEaZC-nPIrMy4gXDo0OOzZEceQzIhFgn_uk2osBcOLM2ZRxf63wOlcVQ542fraQ'
+TOKEN = 'BQAtED7tUr7_rnw10DwYVFqIHDZp6EMtb9GL0CQvHD8M8faHNlejq7DcEqFUM4oGrYNUqV15UEnxCB6JqKB90ZJRXCiw-z9XZjfqSDsB5PqYci3FW0IJjesbSBjSBvv6dmBNUDDVgiiyQFIUiJVg9b-i0FPv3g1XU6_9U1KXz1WH29yP7X60Ytgpg-bMCXs'
 
 
 def __del__markets(list):

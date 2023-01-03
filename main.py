@@ -44,7 +44,7 @@ albums = fetch_local_albums(
 
 sp_albums = fetch_artist_albums(artist)
 
-albums = [albums[2]]
+# albums = [albums[2]]
 for album in albums:
 
     album_name = album[0]
@@ -59,6 +59,10 @@ for album in albums:
 
     print(
         f'{album_name} -> \n{sp_album["name"]} ({round(match_similarity, 2)})')
+
+    # sp_album = get_corresponding_release(album_name, sp_albums, 'album')
+
+    # match_similarity = 1
     if match_similarity < 0.8:
         print('Skipping...\n')
         continue
