@@ -5,7 +5,7 @@ from utils import *
 os.system('cls || clear')
 
 # temporary token for testing
-TOKEN = 'BQAtED7tUr7_rnw10DwYVFqIHDZp6EMtb9GL0CQvHD8M8faHNlejq7DcEqFUM4oGrYNUqV15UEnxCB6JqKB90ZJRXCiw-z9XZjfqSDsB5PqYci3FW0IJjesbSBjSBvv6dmBNUDDVgiiyQFIUiJVg9b-i0FPv3g1XU6_9U1KXz1WH29yP7X60Ytgpg-bMCXs'
+TOKEN = 'BQDneqo3NLH5snLUWTU2MGfDo18D0hYcGaLo7YPOLtv4vfhV8keVIsilHq7y3B8rIA0sLM4ueqjkLDmLOh-awvTZNzDOsQC5kwNRhd-Q4b-BPSsQflDbYHQyGOJgg1p8uJ7fSh_sbCmkCdvdoeYaBx-k844tYQLBNX_cAOOdh0cKrSihyMvhffJOdRT93xE'
 
 
 def __del__markets(list):
@@ -26,11 +26,28 @@ def get_artist(artist_name):
 
     # Return the most popular artist
     raw_results = response.json()['artists']['items']
-    # raw_results.sort(key=lambda x: x['popularity'], reverse=True)
     return raw_results[0]['id']
 
 
-def get_artist_albums(artist_id):
+def search(query, type='artist'):
+    '''
+    Returns the most popular artist ID for the given artist name
+    '''
+
+    query = ''.join([c for c in query if c.isalpha()
+                    or c.isdigit() or c == ' ']).rstrip()
+    query = query.replace(' ', '%20')
+
+    response = requests.get(f'https://api.spotify.com/v1/search?q={query}&type={type}&limit=1',
+                            headers={'Authorization': f'Bearer {TOKEN}'})
+
+    res = response.json()[f'{type}s']['items']
+    __del__markets(res)
+
+    return res
+
+
+def get_artist_albums(artist_id, include_groups=['album', 'single', 'compilation']):
     '''
     Returns a list of albums IDs for the given artist ID
     '''
@@ -45,7 +62,8 @@ def get_artist_albums(artist_id):
     total_ids = []
 
     while True:
-        response = requests.get(f'https://api.spotify.com/v1/artists/{artist_id}/albums?limit={limit}&offset={offset}',
+        filter = '%2C'.join(include_groups)
+        response = requests.get(f'https://api.spotify.com/v1/artists/{artist_id}/albums?limit={limit}&offset={offset}&include_groups={filter}',
                                 headers={'Authorization': f'Bearer {TOKEN}'})
 
         prev_ids = curr_ids

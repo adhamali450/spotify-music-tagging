@@ -2,12 +2,15 @@ import requests
 import music_tag
 import re
 import math
+import spotify
 import os
 from nltk.tokenize import word_tokenize, wordpunct_tokenize
 from collections import Counter
 from difflib import SequenceMatcher
 from format import format_title, track_profile
 import format
+import copy
+from values_adapter import ValuesAdapter
 
 
 def set_auth_header(TOKEN):
@@ -95,10 +98,10 @@ def __normalize_tack_name(track_name):
 def __norm_release(release_name: str) -> str:
     return release_name.lower().replace(' ', '')
 
+
 # 1. Exact match
 # 2. Normalization, formatting and matching
 # 3. Similarity
-
 
 def is_album_member(track_name, track_list):
     # 1. EXACT MATCH (WEAK)
@@ -133,37 +136,49 @@ def is_album_member(track_name, track_list):
     return (False, None)
 
 
-def get_corresponding_release(local_release: str, sp_releases: list, release_type: str) -> tuple:
+def get_corresponding_release(local_release: str, sp_releases: list, release_type: str, search_first=True) -> tuple:
     '''
     Matches local song/album with the corresponding item on spotify.
     '''
+    # TODO: sometimes artist's not accurate, ensure the artist by searching through
+    artist_name = sp_releases[0]['artists'][0]['name']  # hack
+
+    profile = track_profile if release_type == 'track' else format.album_profile
+
+    local_release = format_title(local_release, profile, artist_name)
+
+    if search_first:
+        search_result = get_corresponding_release(local_release, spotify.search(
+            f'{artist_name} {local_release}', release_type), release_type, search_first=False)
+
+        if search_result[0]:
+            return search_result
 
     # 1. EXACT MATCH (WEAK)
     for rel in sp_releases:
-        if local_release == rel:
+        if local_release == rel['name']:
             return (True, rel)
 
-    # 2. FORMATTING AND MATCHING
-    profile = track_profile if release_type == 'track' else format.album_profile
-    local_release = __norm_release(format_title(local_release, profile))
+    # 2. NORMALIZATION AND MATCHING
 
-    norm_sp_releases = remove_common(sp_releases)
-    for rel in norm_sp_releases:
-        rel = __norm_release(format_title(rel, profile))
+    local_release = __norm_release(local_release)
 
-    match = None
-    for sp_release in norm_sp_releases:
-        if local_release in sp_release or sp_release in local_release:
-            match = sp_releases[norm_sp_releases.index(sp_release)]
-            break
+    norm_sp_releases = copy.deepcopy(sp_releases)
+    for i in range(len(norm_sp_releases)):
+        norm_sp_releases[i]['name'] = remove_common([
+            rel['name'] for rel in norm_sp_releases])[i]
 
-    if match:
-        return (True, match)
+        norm_sp_releases[i]['name'] = __norm_release(
+            format_title(norm_sp_releases[i]['name'], profile))
 
     # 3. SIMILARITY
-    threshold = 0.6 if release_type == 'track' else 0.8
+    threshold = 0.6 if release_type == 'track' else 0.70
+    sim = 0
     for sp_rel in norm_sp_releases:
-        if similarity(local_release, sp_rel) > threshold:
+        sim = similarity(strip_if_exists(
+            local_release, sp_rel), sp_rel['name'])
+        if sim > threshold:
+            ValuesAdapter.feed(f'thresh_{release_type}', sim)
             return (True, sp_releases[norm_sp_releases.index(sp_rel)])
 
     return (False, None)
@@ -174,21 +189,21 @@ def __common(ref: list, threshold: int) -> dict:
     for i in range(len(ref)):
         ref[i] = ref[i].replace('_', '')
 
-        # if '.' in ref[i]:
-        #     last_dot = ref[i].rindex('.')
-        #     ref[i] = ref[i][:last_dot - 1] + ' ' + ref[i][last_dot:]
-
-    common = {}
-
-    freq = {}
+    frequency = {}
     for item in ref:
         words = set(wordpunct_tokenize(item))
         for word in words:
-            if word not in freq:
-                freq[word] = 0
-            freq[word] += 1
+            if word not in frequency:
+                frequency[word] = 0
+            frequency[word] += 1
 
-    for word, count in freq.items():
+    # Prevent '-' removal to avoid some issues
+    if '-' in frequency:
+        del frequency['-']
+
+    common = {}
+
+    for word, count in frequency.items():
         if count >= int(threshold * len(ref)):
             per_item_freq = int(count / len(ref))
             common[word] = per_item_freq if per_item_freq > 1 else 1
@@ -221,14 +236,34 @@ def remove_common(list: list, threshold: int = 0.9) -> list:
     '''
 
     if len(list) == 1:
-        return str
+        return list
 
     common = __common(list, threshold)
 
     new_list = []
     for str in list:
-        for word, count in common.items():
-            str = str.replace(word, '', count).strip()
+        for token in set(wordpunct_tokenize(str)):
+            if token in common:
+                str = str.replace(token, '', common[token]).strip()
         new_list.append(str)
 
     return new_list
+
+
+def strip_if_exists(local_release: str, sp_release: list) -> str:
+    '''
+    Strip common words from local release if they exist in spotify release
+    e.g, `release-year`, `artist-name` etc.
+    '''
+
+    stripped = []
+
+    # 1- Release year
+    year = sp_release['release_date'].split('-')[0]
+    stripped.append(year)
+
+    for word in stripped:
+        if word in local_release:
+            local_release = local_release.replace(word, '').strip()
+
+    return local_release

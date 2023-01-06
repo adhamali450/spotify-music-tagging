@@ -6,7 +6,7 @@ from format import format_title, album_profile, track_profile
 
 __artist_dir = None
 
-allowed_formats = ['mp3', 'wav', 'flac', 'ogg']
+allowed_formats = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'wma']
 
 
 def get_all_files(path):
@@ -49,7 +49,6 @@ def fetch_local_albums(miscs=[], exclude=[], format=True):
 
     clean_albums = remove_common([album[0] for album in albums])
     return [(clean_albums[i], albums[i][1]) for i in range(len(albums))]
-    # return [(rm_common(album[0], [album[0] for album in albums]), album[1]) for album in albums]
 
 
 def fetch_local_tracks(album_path):

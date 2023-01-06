@@ -6,6 +6,8 @@ import json
 from utils import *
 from rich import print
 import time
+from values_adapter import ValuesAdapter
+
 start_time = time.time()
 
 
@@ -23,7 +25,7 @@ def fetch_artist_albums(artist, path='data'):
         print(f'Retrieving {artist} albums from Spotify...')
 
         sp_albums = [spotify.get_album(id)
-                     for id in spotify.get_artist_albums(artist_id)]
+                     for id in spotify.get_artist_albums(artist_id, ['appears_on', 'album', 'compilation', 'single'])]
 
         print(f'Saving locally...\n')
         with open(f'{path}/{artist}.json', 'w') as f:
@@ -36,36 +38,34 @@ os.system('cls || clear')
 
 music_dir = f'C:/Users/{os.getlogin()}/Music'
 
-artist = 'Megadeth'
+artist = "Marilyn Manson"
 
 set_artist_dir(f'{music_dir}/{artist}')
+# albums = fetch_local_albums(
+#     miscs=['1 - Studio'], exclude=['3 - Bootleg Series', '4 - Compilations', '2 - Live Albums'])
+
 albums = fetch_local_albums(
     miscs=[], exclude=[])
 
+
 sp_albums = fetch_artist_albums(artist)
 
-# albums = [albums[2]]
+print(f'👤 {artist}\n')
+
+albums = [albums[9]]
 for album in albums:
 
     album_name = album[0]
     album_dir = album[1]
 
-    # Sort spotify albums by name similarity to local album
-    sim = sorted([(sp_album, similarity(album_name, sp_album['name']))
-                  for sp_album in sp_albums], key=lambda x: x[1], reverse=True)
+    is_found, sp_album = get_corresponding_release(
+        album_name, sp_albums, 'album')
 
-    sp_album = sim[0][0]
-    match_similarity = sim[0][1]
-
-    print(
-        f'{album_name} -> \n{sp_album["name"]} ({round(match_similarity, 2)})')
-
-    # sp_album = get_corresponding_release(album_name, sp_albums, 'album')
-
-    # match_similarity = 1
-    if match_similarity < 0.8:
-        print('Skipping...\n')
+    if not is_found:
+        print(f'❌ {album_name}\n')
         continue
+
+    print(f'💿 {album_name} -> [bold white on green] {sp_album["name"]} ')
 
     # ALBUM INFO
     cover_path = f'{album_dir}/{album_name}.jpg'
@@ -121,7 +121,7 @@ for album in albums:
             except:
                 pass
         else:
-            print(track_name)
+            print(f'[red]{track_name}')
             failed += 1
 
     print(f'{failed}/{len(local_tracks)} failed\n')
@@ -129,3 +129,5 @@ for album in albums:
     # command = input('Press Enter to continue... \n')
 
 print("--- %s Seconds ---" % round(time.time() - start_time, 4))
+print(f'Average album threshold: {ValuesAdapter.get("thresh_album")}')
+print(f'Average track threshold: {ValuesAdapter.get("thresh_track")}')
