@@ -38,7 +38,7 @@ os.system('cls || clear')
 
 music_dir = f'C:/Users/{os.getlogin()}/Music'
 
-artist = "Marilyn Manson"
+artist = "David Bowie"
 
 set_artist_dir(f'{music_dir}/{artist}')
 # albums = fetch_local_albums(
@@ -52,14 +52,15 @@ sp_albums = fetch_artist_albums(artist)
 
 print(f'👤 {artist}\n')
 
-albums = [albums[9]]
+# albums = [albums[4]]
 for album in albums:
 
     album_name = album[0]
     album_dir = album[1]
+    local_tracks = fetch_local_tracks(album_dir)
 
     is_found, sp_album = get_corresponding_release(
-        album_name, sp_albums, 'album')
+        album_name, sp_albums, 'album', search_first=True, custom_options={'total_tracks': len(local_tracks)})
 
     if not is_found:
         print(f'❌ {album_name}\n')
@@ -88,19 +89,22 @@ for album in albums:
     for track in local_tracks:
 
         track_name = track.split('\\')[-1]
-        track_name = rm_common(track_name, [track.split('\\')[-1]
-                                            for track in local_tracks])
-        track_name = format_title(track_name, track_profile)
 
-        is_found, sp_track_name = is_album_member(track_name, sp_track_names)
+        track_name = filter(collection=[track.split('\\')[-1]
+                                        for track in local_tracks], title=track_name)
+
+        # is_found, sp_track_name = is_album_member(track_name, sp_track_names)
+        is_found, sp_track = get_corresponding_release(
+            track_name, sp_tracks, 'track', search_first=False, custom_options={'duration': duration(path=track)})
 
         if is_found:
-            sp_track = sp_tracks[sp_track_names.index(sp_track_name)]
+            # sp_track = sp_tracks[sp_track_names.index(sp_track_name)]
 
             # TRACK METADATA
             set_audio_file_metadata(
                 track,
                 {
+                    'album': sp_album['name'],
                     'discnumber': sp_track['disc_number'],
                     'albumartist': album_artist,
                     'artist': sp_track['artists'][0]['name'],

@@ -2,7 +2,7 @@ from directory_tree import display_tree
 import re
 import os
 from utils import remove_common
-from format import format_title, album_profile, track_profile
+from format import *
 
 __artist_dir = None
 
@@ -47,7 +47,8 @@ def fetch_local_albums(miscs=[], exclude=[], format=True):
                 # title = format_title(album, album_profile) if format else album
                 albums.append((album, os.path.join(utils_path, album)))
 
-    clean_albums = remove_common([album[0] for album in albums])
+    # TODO: refactor
+    clean_albums = filter(collection=[album[0] for album in albums])
     return [(clean_albums[i], albums[i][1]) for i in range(len(albums))]
 
 

@@ -5,7 +5,7 @@ from utils import *
 os.system('cls || clear')
 
 # temporary token for testing
-TOKEN = 'BQDneqo3NLH5snLUWTU2MGfDo18D0hYcGaLo7YPOLtv4vfhV8keVIsilHq7y3B8rIA0sLM4ueqjkLDmLOh-awvTZNzDOsQC5kwNRhd-Q4b-BPSsQflDbYHQyGOJgg1p8uJ7fSh_sbCmkCdvdoeYaBx-k844tYQLBNX_cAOOdh0cKrSihyMvhffJOdRT93xE'
+TOKEN = 'BQA1LTHKQf7ug6F9hLpZF7cDvywT1i4-yd3zVJ9tHZAtr5NF4CaoKFMt1qHXDHDFXHkJ3TJu0_tnaT1GEugzUVbmWodAd3O-6Mdt6Da1dRibWW3DuY7ji280jueNv3uN1WgUGEFsOVdN-CEd4D5Z8QzR6ILg-tVnF_wui_QgomQc405AR_VS2ohYJ5s9MGA'
 
 
 def __del__markets(list):
@@ -38,7 +38,7 @@ def search(query, type='artist'):
                     or c.isdigit() or c == ' ']).rstrip()
     query = query.replace(' ', '%20')
 
-    response = requests.get(f'https://api.spotify.com/v1/search?q={query}&type={type}&limit=1',
+    response = requests.get(f'https://api.spotify.com/v1/search?q={query}&type={type}&limit=20',
                             headers={'Authorization': f'Bearer {TOKEN}'})
 
     res = response.json()[f'{type}s']['items']

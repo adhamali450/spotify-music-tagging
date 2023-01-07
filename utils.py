@@ -7,10 +7,17 @@ import os
 from nltk.tokenize import word_tokenize, wordpunct_tokenize
 from collections import Counter
 from difflib import SequenceMatcher
-from format import format_title, track_profile
+from format import *
 import format
-import copy
 from values_adapter import ValuesAdapter
+
+
+def duration(path: str) -> int:
+    '''
+    Returns the duration of a song in milliseconds.
+    '''
+    audio_file = music_tag.load_file(path)
+    return int(audio_file['#length']) * 1000
 
 
 def set_auth_header(TOKEN):
@@ -36,7 +43,7 @@ def set_audio_file_metadata(path, dict):
         del audio_file[key]
         audio_file[key] = value
 
-    # audio_file.save()
+    audio_file.save()
 
 
 def __lev_similarity(a, b):
@@ -95,51 +102,15 @@ def __normalize_tack_name(track_name):
     return norm_track_name
 
 
-def __norm_release(release_name: str) -> str:
+def __normalize(release_name: str) -> str:
     return release_name.lower().replace(' ', '')
 
 
-# 1. Exact match
-# 2. Normalization, formatting and matching
-# 3. Similarity
-
-def is_album_member(track_name, track_list):
-    # 1. EXACT MATCH (WEAK)
-    for track in track_list:
-        if track_name == track:
-            return (True, track)
-
-    # 2. NORMALIZATION, FORMATTING AND MATCHING
-    norm_track_name = __normalize_tack_name(
-        format_title(track_name, track_profile))
-
-    norm_track_list = track_list.copy()
-    for i in range(len(norm_track_list)):
-        norm_track_list[i] = rm_common(norm_track_list[i], track_list)
-        norm_track_list[i] = __normalize_tack_name(
-            format_title(norm_track_list[i], track_profile))
-
-    match = None
-    for track in norm_track_list:
-        if norm_track_name in track or track in norm_track_name:
-            match = track_list[norm_track_list.index(track)]
-            break
-
-    if match:
-        return (True, match)
-
-    # 3. SIMILARITY
-    for track in norm_track_list:
-        if similarity(norm_track_name, track) > 0.6:
-            return (True, track_list[norm_track_list.index(track)])
-
-    return (False, None)
-
-
-def get_corresponding_release(local_release: str, sp_releases: list, release_type: str, search_first=True) -> tuple:
+def get_corresponding_release(local_release: str, sp_releases: list, release_type: str, search_first=True, custom_options: dict = None) -> tuple:
     '''
     Matches local song/album with the corresponding item on spotify.
     '''
+
     # TODO: sometimes artist's not accurate, ensure the artist by searching through
     artist_name = sp_releases[0]['artists'][0]['name']  # hack
 
@@ -149,37 +120,58 @@ def get_corresponding_release(local_release: str, sp_releases: list, release_typ
 
     if search_first:
         search_result = get_corresponding_release(local_release, spotify.search(
-            f'{artist_name} {local_release}', release_type), release_type, search_first=False)
+            f'{artist_name} {local_release}', release_type), release_type, search_first=False, custom_options=custom_options)
 
         if search_result[0]:
             return search_result
 
-    # 1. EXACT MATCH (WEAK)
-    for rel in sp_releases:
-        if local_release == rel['name']:
-            return (True, rel)
+    # NORMALIZATION
+    # [1] Normalize Local release
+    # [2] Normalize Spotify releases
 
-    # 2. NORMALIZATION AND MATCHING
-
-    local_release = __norm_release(local_release)
-
-    norm_sp_releases = copy.deepcopy(sp_releases)
-    for i in range(len(norm_sp_releases)):
-        norm_sp_releases[i]['name'] = remove_common([
-            rel['name'] for rel in norm_sp_releases])[i]
-
-        norm_sp_releases[i]['name'] = __norm_release(
-            format_title(norm_sp_releases[i]['name'], profile))
+    local_release = __normalize(local_release)
 
     # 3. SIMILARITY
-    threshold = 0.6 if release_type == 'track' else 0.70
-    sim = 0
-    for sp_rel in norm_sp_releases:
-        sim = similarity(strip_if_exists(
-            local_release, sp_rel), sp_rel['name'])
-        if sim > threshold:
-            ValuesAdapter.feed(f'thresh_{release_type}', sim)
-            return (True, sp_releases[norm_sp_releases.index(sp_rel)])
+    threshold = 0.5 if release_type == 'track' else 0.80
+
+    shared = shared_subsequence([rel['name'] for rel in sp_releases])
+
+    # print(__normalize(
+    #     format_title(
+    #         filter(title='Sweet Thing/Candidate/Sweet Thing - Live; 2005 Mix; 2016 Remaster', ref=shared), profile)))
+
+    sp_releases = [(rel, similarity(local_release,
+                                    __normalize(
+                                        format_title(
+                                            filter(title=rel['name'], ref=shared), profile)))) for rel in sp_releases]
+
+    sp_releases.sort(key=lambda x: (x[1]), reverse=True)
+
+    if custom_options.get('duration'):
+        sp_releases.sort(key=lambda x: (
+            abs(x[0]['duration_ms'] - custom_options['duration'])))
+
+    for rel in sp_releases:
+        if rel[1] > threshold:
+            ValuesAdapter.feed(f'thresh_{release_type}', rel[1])
+
+            # Type-specific options
+            # Albums: year, total_tracks
+            if release_type == 'album':
+                if custom_options:
+                    if custom_options.get('year') and custom_options['year'] != rel[0]['release_date'][:4]:
+                        continue
+
+                    if custom_options.get('total_tracks') and custom_options['total_tracks'] != rel[0]['total_tracks']:
+                        continue
+
+            # # Track: Duration
+            # if release_type == 'track':
+            #     if custom_options:
+            #         if custom_options.get('duration') and custom_options['duration'] != rel[0]['duration_ms']:
+            #             continue
+
+            return (True, rel[0])
 
     return (False, None)
 
@@ -211,23 +203,6 @@ def __common(ref: list, threshold: int) -> dict:
     return common
 
 
-def rm_common(str: str, ref: list, threshold: int = 0.9) -> str:
-    '''
-    Remove common words present in a string with reference to a collection of strings\n
-    `['The Beatles - Abby Road', 'The Beatles - Revolver'] -> ['Abby Road', 'Revolver']`
-    '''
-
-    if len(ref) == 1:
-        return str
-
-    common = __common(ref, threshold)
-
-    for word, count in common.items():
-        str = str.replace(word, '', count).strip()
-
-    return str
-
-
 def remove_common(list: list, threshold: int = 0.9) -> list:
     '''
     Remove all occurances of substrings present in ALL strings in a list\n
@@ -252,7 +227,7 @@ def remove_common(list: list, threshold: int = 0.9) -> list:
 
 def strip_if_exists(local_release: str, sp_release: list) -> str:
     '''
-    Strip common words from local release if they exist in spotify release
+    Strip commonly appearing words from local release if they exist in spotify release
     e.g, `release-year`, `artist-name` etc.
     '''
 

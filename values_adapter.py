@@ -7,7 +7,8 @@ class ValuesAdapter:
     @staticmethod
     def get(key: str, default=None):
         try:
-            return ValuesAdapter.__avg(ValuesAdapter.__values[key])
+            return min(ValuesAdapter.__values[key])
+            # return ValuesAdapter.__avg(ValuesAdapter.__values[key])
         except KeyError:
             return default
 
