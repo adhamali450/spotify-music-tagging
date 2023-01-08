@@ -1,7 +1,6 @@
 from directory_tree import display_tree
 import re
 import os
-from utils import remove_common
 from format import *
 
 __artist_dir = None
@@ -28,7 +27,7 @@ def set_artist_dir(dir):
     __artist_dir = dir
 
 
-def fetch_local_albums(miscs=[], exclude=[], format=True):
+def fetch_local_albums(miscs=[], exclude=[]):
     albums = []
 
     for album in os.listdir(__artist_dir):
@@ -37,17 +36,13 @@ def fetch_local_albums(miscs=[], exclude=[], format=True):
             continue
 
         if album not in miscs:
-
-            # title = format_title(album, album_profile) if format else album
             albums.append((album, os.path.join(__artist_dir, album)))
         else:
             utils_path = os.path.join(__artist_dir, album)
 
             for album in os.listdir(utils_path):
-                # title = format_title(album, album_profile) if format else album
                 albums.append((album, os.path.join(utils_path, album)))
 
-    # TODO: refactor
     clean_albums = filter(collection=[album[0] for album in albums])
     return [(clean_albums[i], albums[i][1]) for i in range(len(albums))]
 
@@ -56,7 +51,7 @@ def fetch_local_tracks(album_path):
     '''
     Get all tracks in an album folder
     '''
-    return [track for track in get_all_files(album_path) if track.split(
+    return [file for file in get_all_files(album_path) if file.split(
         '.')[-1].lower() in allowed_formats]
 
 

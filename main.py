@@ -1,12 +1,13 @@
 import os
 from utils import *
-from dirs import set_artist_dir, fetch_local_albums, fetch_local_tracks
+from dirs import *
 import spotify
 import json
 from utils import *
 from rich import print
 import time
 from values_adapter import ValuesAdapter
+os.system('cls || clear')
 
 start_time = time.time()
 
@@ -34,19 +35,15 @@ def fetch_artist_albums(artist, path='data'):
     return sp_albums
 
 
-os.system('cls || clear')
-
 music_dir = f'C:/Users/{os.getlogin()}/Music'
-
 artist = "David Bowie"
-
 set_artist_dir(f'{music_dir}/{artist}')
+
 # albums = fetch_local_albums(
 #     miscs=['1 - Studio'], exclude=['3 - Bootleg Series', '4 - Compilations', '2 - Live Albums'])
 
 albums = fetch_local_albums(
     miscs=[], exclude=[])
-
 
 sp_albums = fetch_artist_albums(artist)
 
@@ -60,7 +57,7 @@ for album in albums:
     local_tracks = fetch_local_tracks(album_dir)
 
     is_found, sp_album = get_corresponding_release(
-        album_name, sp_albums, 'album', search_first=True, custom_options={'total_tracks': len(local_tracks)})
+        album_name, sp_albums, 'album', custom_options={'total_tracks': len(local_tracks)})
 
     if not is_found:
         print(f'❌ {album_name}\n')
@@ -93,13 +90,10 @@ for album in albums:
         track_name = filter(collection=[track.split('\\')[-1]
                                         for track in local_tracks], title=track_name)
 
-        # is_found, sp_track_name = is_album_member(track_name, sp_track_names)
         is_found, sp_track = get_corresponding_release(
-            track_name, sp_tracks, 'track', search_first=False, custom_options={'duration': duration(path=track)})
+            track_name, sp_tracks, 'track', custom_options={'duration': duration(path=track)})
 
         if is_found:
-            # sp_track = sp_tracks[sp_track_names.index(sp_track_name)]
-
             # TRACK METADATA
             set_audio_file_metadata(
                 track,
@@ -135,3 +129,4 @@ for album in albums:
 print("--- %s Seconds ---" % round(time.time() - start_time, 4))
 print(f'Average album threshold: {ValuesAdapter.get("thresh_album")}')
 print(f'Average track threshold: {ValuesAdapter.get("thresh_track")}')
+print(f'HTTP requests made: {ValuesAdapter.get("requests")}')

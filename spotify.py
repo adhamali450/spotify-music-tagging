@@ -1,16 +1,22 @@
-import os
 import requests
-from utils import *
-
-os.system('cls || clear')
+from values_adapter import ValuesAdapter
+import inspect
 
 # temporary token for testing
-TOKEN = 'BQA1LTHKQf7ug6F9hLpZF7cDvywT1i4-yd3zVJ9tHZAtr5NF4CaoKFMt1qHXDHDFXHkJ3TJu0_tnaT1GEugzUVbmWodAd3O-6Mdt6Da1dRibWW3DuY7ji280jueNv3uN1WgUGEFsOVdN-CEd4D5Z8QzR6ILg-tVnF_wui_QgomQc405AR_VS2ohYJ5s9MGA'
+TOKEN = 'BQCkLuxd5nKRKKYnP4HzZswifgoOJe-D953HkRAFzvDtXwCnzlO4bs63Sl5J8FBZ6z_-pRCL2rAzfCh3EaJDSU4pCHXwob0PFr3G7vdsi_S9ja9oCCPhogWWeZPu3csACEw9S0yFSAjSwa4VexWRbZrGyzjwL74F17ISa7TyC6fkw9_jV_rDOSkS5QOlqhw'
+
+
+def request_aux(url):
+    print(f'{inspect.stack()[1].function} is making a request')
+
+    ValuesAdapter.increament('requests', 1)
+    return requests.get(url, headers={'Authorization': f'Bearer {TOKEN}'})
 
 
 def __del__markets(list):
     for item in list:
-        del item['available_markets']
+        if 'available_markets' in item:
+            del item['available_markets']
 
 
 # 1- Get artist ID
@@ -21,8 +27,11 @@ def get_artist(artist_name):
     '''
     Returns the most popular artist ID for the given artist name
     '''
-    response = requests.get(f'https://api.spotify.com/v1/search?q={artist_name}&type=artist',
-                            headers={'Authorization': f'Bearer {TOKEN}'})
+    # response = requests.get(f'https://api.spotify.com/v1/search?q={artist_name}&type=artist',
+    #                         headers={'Authorization': f'Bearer {TOKEN}'})
+
+    response = request_aux(
+        f'https://api.spotify.com/v1/search?q={artist_name}&type=artist')
 
     # Return the most popular artist
     raw_results = response.json()['artists']['items']
@@ -38,8 +47,11 @@ def search(query, type='artist'):
                     or c.isdigit() or c == ' ']).rstrip()
     query = query.replace(' ', '%20')
 
-    response = requests.get(f'https://api.spotify.com/v1/search?q={query}&type={type}&limit=20',
-                            headers={'Authorization': f'Bearer {TOKEN}'})
+    # response = requests.get(f'https://api.spotify.com/v1/search?q={query}&type={type}&limit=20',
+    #                         headers={'Authorization': f'Bearer {TOKEN}'})
+
+    response = request_aux(
+        f'https://api.spotify.com/v1/search?q={query}&type={type}&limit=20')
 
     res = response.json()[f'{type}s']['items']
     __del__markets(res)
@@ -63,8 +75,11 @@ def get_artist_albums(artist_id, include_groups=['album', 'single', 'compilation
 
     while True:
         filter = '%2C'.join(include_groups)
-        response = requests.get(f'https://api.spotify.com/v1/artists/{artist_id}/albums?limit={limit}&offset={offset}&include_groups={filter}',
-                                headers={'Authorization': f'Bearer {TOKEN}'})
+        # response = requests.get(f'https://api.spotify.com/v1/artists/{artist_id}/albums?limit={limit}&offset={offset}&include_groups={filter}',
+        #                         headers={'Authorization': f'Bearer {TOKEN}'})
+
+        response = request_aux(
+            f'https://api.spotify.com/v1/artists/{artist_id}/albums?limit={limit}&offset={offset}&include_groups={filter}')
 
         prev_ids = curr_ids
         curr_ids = [album['id'] for album in response.json()['items']]
@@ -83,8 +98,11 @@ def get_album(album_id):
     Returns a dictionary of the album's info for the given album ID
     '''
 
-    response = requests.get(f'https://api.spotify.com/v1/albums/{album_id}',
-                            headers={'Authorization': f'Bearer {TOKEN}'})
+    # response = requests.get(f'https://api.spotify.com/v1/albums/{album_id}',
+    #                         headers={'Authorization': f'Bearer {TOKEN}'})
+
+    response = request_aux(f'https://api.spotify.com/v1/albums/{album_id}')
+
     raw = response.json()
 
     desired_keys = ['name', 'release_date', 'genres', 'total_tracks',
@@ -100,44 +118,39 @@ def get_album(album_id):
 
 
 def get_album_tracks(album):
-    album_id = album['id']
-    response = requests.get(f'https://api.spotify.com/v1/albums/{album_id}/tracks?limit=40',
-                            headers=set_auth_header(TOKEN))
-
-    tracks = response.json()['items']
-
-    __del__markets(tracks)
-
-    return tracks
-
-
-def get_album_tracks(album):
     '''
     Returns a list of track IDs for the given album
     '''
-
-    # Keeps seeking albums and updating offset (max limit 40)
 
     album_id = album['id']
 
     limit = 50
     offset = 0
 
-    prev_tracks = []
-    curr_tracks = []
     total_tracks = []
+    if album['total_tracks'] < limit and album.get('tracks'):
+        total_tracks = album['tracks']['items']
+    else:
+        # Keeps seeking albums and updating offset (max limit 50)
 
-    while True:
-        response = requests.get(f'https://api.spotify.com/v1/albums/{album_id}/tracks?limit={limit}&offset={offset}',
-                                headers={'Authorization': f'Bearer {TOKEN}'})
+        prev_tracks = []
+        curr_tracks = []
 
-        prev_tracks = curr_tracks
-        curr_tracks = response.json()['items']
+        while True:
+            # response = requests.get(f'https://api.spotify.com/v1/albums/{album_id}/tracks?limit={limit}&offset={offset}',
+            #                         headers={'Authorization': f'Bearer {TOKEN}'})
 
-        if curr_tracks == prev_tracks:
-            break
+            response = request_aux(
+                f'https://api.spotify.com/v1/albums/{album_id}/tracks?limit={limit}&offset={offset}')
 
-        offset += limit
-        total_tracks += curr_tracks
+            prev_tracks = curr_tracks
+            curr_tracks = response.json()['items']
 
+            if curr_tracks == prev_tracks:
+                break
+
+            offset += limit
+            total_tracks += curr_tracks
+
+    __del__markets(total_tracks)
     return total_tracks
