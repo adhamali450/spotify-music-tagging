@@ -1,6 +1,7 @@
 from directory_tree import display_tree
 import re
 import os
+from utils import duration
 from format import *
 
 __artist_dir = None
@@ -27,32 +28,56 @@ def set_artist_dir(dir):
     __artist_dir = dir
 
 
-def fetch_local_albums(miscs=[], exclude=[]):
-    albums = []
-
-    for album in os.listdir(__artist_dir):
-        if album in exclude or \
-                os.path.isfile(os.path.join(__artist_dir, album)):
-            continue
-
-        if album not in miscs:
-            albums.append((album, os.path.join(__artist_dir, album)))
-        else:
-            utils_path = os.path.join(__artist_dir, album)
-
-            for album in os.listdir(utils_path):
-                albums.append((album, os.path.join(utils_path, album)))
-
-    clean_albums = filter(collection=[album[0] for album in albums])
-    return [(clean_albums[i], albums[i][1]) for i in range(len(albums))]
-
-
 def fetch_local_tracks(album_path):
     '''
-    Get all tracks in an album folder
+    Get all tracks in an album directory
     '''
     return [file for file in get_all_files(album_path) if file.split(
         '.')[-1].lower() in allowed_formats]
+
+
+def fetch_local_albums(root_path=None, miscs=[], exclude=[]):
+    '''
+    Get all albums in an artist folder
+    '''
+
+    if root_path is None:
+        root_path = __artist_dir
+
+    albums = []
+
+    for sub_dir in os.listdir(root_path):
+
+        full_path = os.path.join(root_path, sub_dir)
+        if sub_dir in exclude or \
+                os.path.isfile(full_path):
+            continue
+
+        if sub_dir in miscs:
+            albums.extend(fetch_local_albums(root_path=full_path))
+
+        album = {
+            'name': sub_dir.split('\\')[-1],
+            'path': full_path,
+            'tracks': [
+                {
+                    'name': track.split('\\')[-1],
+                    'path': track,
+                    'duration': duration(track)
+                }
+                for track in fetch_local_tracks(full_path)
+            ],
+        }
+        album['duration'] = sum(
+            [track['duration'] for track in album['tracks']])
+        album['total_tracks'] = len(album['tracks'])
+
+        albums.append(album)
+
+    # clean_albums = filter(collection=[album[0] for album in albums])
+    # return [(clean_albums[i], albums[i][1]) for i in range(len(albums))]
+
+    return albums
 
 
 def inspect(dir, level=0):

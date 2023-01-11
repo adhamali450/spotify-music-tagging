@@ -89,25 +89,70 @@ def __normalize(release_name: str) -> str:
     return release_name.lower().replace(' ', '')
 
 
-def get_corresponding_release(local_release: str, sp_releases: list, release_type: str, custom_options: dict = None) -> tuple:
+def label_by_duration(local_release, sp_releases, release_type):
+    '''
+    Label each release with it's duration in a tuple
+    '''
+
+    total_duration = local_release['duration']
+
+    labeled_releases = []
+    for rel in sp_releases:
+        sp_duration = 0
+
+        if release_type == 'album':
+            for track in rel['tracks']['items']:
+                sp_duration += track['duration_ms']
+        elif release_type == 'track':
+            sp_duration = rel['duration_ms']
+
+        labeled_releases.append((rel, sp_duration))
+
+    # Sort by difference in duration (Should pick the minimum)
+    # labeled_releases.sort(key=lambda x: (abs(x[1] - total_duration)))
+
+    return labeled_releases
+
+
+def get_corresponding_release(local_release: dict, sp_releases: list, release_type: str, custom_options: dict = None) -> tuple:
     '''
     Matches local song/album with the corresponding item on spotify.
     '''
 
-    # TODO: sometimes artist's not accurate, ensure the artist by searching through
+    # Fingerprint matching:
+    #   Album:
+    #       [1] number of tracks
+    #       [2] duration (ms)
+    #   Track:
+    #       [1] duration (ms)
+
+    # Labeling each release with it's duration in a tuple
+    labeled = label_by_duration(local_release, sp_releases, release_type)
+
+    # if release_type == 'album':
+    #     print(f'{total_duration/1000} -> {labeled_releases[0][1]/1000}')
+    #     # number of tracks must match
+    #     for rel in labeled_releases:
+    #         if local_release['total_tracks'] == rel[0]['total_tracks']:
+    #             return (True, rel[0])
+    #     return (False, None)
+    # elif release_type == 'track':
+    #     return (True, labeled_releases[0][0])
+
     artist_name = sp_releases[0]['artists'][0]['name']  # hack
 
     profile = track_profile if release_type == 'track' else format.album_profile
 
-    local_release = format_title(local_release, profile, artist_name)
+    release_name = local_release['name']
+    release_name = format_title(release_name, profile, artist_name)
 
     # NORMALIZATION
     # [1] Normalize Local release
     # [2] Normalize Spotify releases
 
-    local_release = __normalize(local_release)
+    release_name = __normalize(release_name)
 
-    # 3. SIMILARITY
+    # 3. NAME SIMILARITY
     threshold = 0.5 if release_type == 'track' else 0.80
 
     shared = shared_subsequence([rel['name'] for rel in sp_releases])
@@ -116,32 +161,32 @@ def get_corresponding_release(local_release: str, sp_releases: list, release_typ
     #     format_title(
     #         filter(title='Sweet Thing/Candidate/Sweet Thing - Live; 2005 Mix; 2016 Remaster', ref=shared), profile)))
 
-    sp_releases = [(rel, similarity(local_release,
-                                    __normalize(
-                                        format_title(
-                                            filter(title=rel['name'], ref=shared), profile)))) for rel in sp_releases]
+    sp_releases = [(rel[0], rel[1], -1 * similarity(release_name,
+                                                    __normalize(
+                                                        format_title(
+                                                            filter(title=rel[0]['name'], ref=shared), profile)))) for rel in labeled]
 
-    sp_releases.sort(key=lambda x: (x[1]), reverse=True)
+    labeled.sort(key=lambda x: (x[1], x[2]))
 
-    if release_type == 'track' and custom_options.get('duration'):
-        sp_releases.sort(key=lambda x: (
-            abs(x[0]['duration_ms'] - custom_options['duration'])))
+    # if release_type == 'track' and custom_options.get('duration'):
+    #     sp_releases.sort(key=lambda x: (
+    #         abs(x[0]['duration_ms'] - custom_options['duration'])))
 
-    for rel in sp_releases:
-        if rel[1] > threshold:
-            ValuesAdapter.feed(f'thresh_{release_type}', rel[1])
+    # for rel in sp_releases:
+    #     if rel[1] > threshold:
+    #         ValuesAdapter.feed(f'thresh_{release_type}', rel[1])
 
-            # Type-specific options
-            # Albums: year, total_tracks
-            if release_type == 'album':
-                if custom_options:
-                    if custom_options.get('year') and custom_options['year'] != rel[0]['release_date'][:4]:
-                        continue
+    #         # Type-specific options
+    #         # Albums: year, total_tracks
+    #         if release_type == 'album':
+    #             if custom_options:
+    #                 if custom_options.get('year') and custom_options['year'] != rel[0]['release_date'][:4]:
+    #                     continue
 
-                    if custom_options.get('total_tracks') and custom_options['total_tracks'] != rel[0]['total_tracks']:
-                        continue
+    #                 if custom_options.get('total_tracks') and custom_options['total_tracks'] != rel[0]['total_tracks']:
+    #                     continue
 
-            return (True, rel[0])
+    #         return (True, rel[0])
 
     return (False, None)
 
