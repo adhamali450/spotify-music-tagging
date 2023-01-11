@@ -52,12 +52,13 @@ print(f'👤 {artist}\n')
 # albums = [albums[4]]
 for album in albums:
 
-    album_name = album[0]
-    album_dir = album[1]
-    local_tracks = fetch_local_tracks(album_dir)
+    album_name = album['name']
+    album_path = album['path']
+    local_tracks = album['tracks']
 
+    # TODO: Refactor according to new
     is_found, sp_album = get_corresponding_release(
-        album_name, sp_albums, 'album', custom_options={'total_tracks': len(local_tracks)})
+        album, sp_albums, 'album', custom_options={'total_tracks': len(local_tracks)})
 
     if not is_found:
         print(f'❌ {album_name}\n')
@@ -66,7 +67,7 @@ for album in albums:
     print(f'💿 {album_name} -> [bold white on green] {sp_album["name"]} ')
 
     # ALBUM INFO
-    cover_path = f'{album_dir}/{album_name}.jpg'
+    cover_path = f'{album_path}/{album_name}.jpg'
     album_cover = download_cover(sp_album['images'][0]['url'],
                                  cover_path)
     album_year = sp_album['release_date'].split('-')[0]
@@ -78,25 +79,23 @@ for album in albums:
     sp_tracks = spotify.get_album_tracks(sp_album)
     sp_track_names = [track['name'] for track in sp_tracks]
 
-    local_tracks = fetch_local_tracks(album_dir)
-
     print(f'Found {len(sp_tracks)} for {len(local_tracks)}')
 
     failed = 0
     for track in local_tracks:
 
-        track_name = track.split('\\')[-1]
+        track_name = track['name']
 
-        track_name = filter(collection=[track.split('\\')[-1]
-                                        for track in local_tracks], title=track_name)
+        track_name = filter(collection=[track['name']
+                            for track in local_tracks], title=track_name)
 
         is_found, sp_track = get_corresponding_release(
-            track_name, sp_tracks, 'track', custom_options={'duration': duration(path=track)})
+            track, sp_tracks, 'track')
 
         if is_found:
             # TRACK METADATA
             set_audio_file_metadata(
-                track,
+                track['path'],
                 {
                     'album': sp_album['name'],
                     'discnumber': sp_track['disc_number'],
@@ -112,7 +111,7 @@ for album in albums:
             # ALBUM COVER
             try:
                 set_audio_file_metadata(
-                    track,
+                    track['path'],
                     {
                         'artwork': album_cover,
                     })

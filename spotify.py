@@ -3,7 +3,7 @@ from values_adapter import ValuesAdapter
 import inspect
 
 # temporary token for testing
-TOKEN = 'BQCkLuxd5nKRKKYnP4HzZswifgoOJe-D953HkRAFzvDtXwCnzlO4bs63Sl5J8FBZ6z_-pRCL2rAzfCh3EaJDSU4pCHXwob0PFr3G7vdsi_S9ja9oCCPhogWWeZPu3csACEw9S0yFSAjSwa4VexWRbZrGyzjwL74F17ISa7TyC6fkw9_jV_rDOSkS5QOlqhw'
+TOKEN = 'BQCPOQLgvCWMVCDhULkJ3hc1hjXsJfQmmOZFrVlzvLQJu1I0_63Sb_iGHXBKhlrOZ9owjcJPULzQIU0z4t5eebGHiZSs0mGM5QI2gfJdNj3d68DbXwWyRRJAN-LjA7JYvOY9T0RlBT7S1vfJOWGJceY-cJoafE56TOC69bLWUCuQIcz9OEBGoeR_q7WyhGA'
 
 
 def request_aux(url):
