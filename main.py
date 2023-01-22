@@ -56,7 +56,6 @@ for album in albums:
     album_path = album['path']
     local_tracks = album['tracks']
 
-    # TODO: Refactor according to new
     is_found, sp_album = get_corresponding_release(
         album, sp_albums, 'album', custom_options={'total_tracks': len(local_tracks)})
 
@@ -79,18 +78,19 @@ for album in albums:
     sp_tracks = spotify.get_album_tracks(sp_album)
     sp_track_names = [track['name'] for track in sp_tracks]
 
-    print(f'Found {len(sp_tracks)} for {len(local_tracks)}')
+    print(f'Found {len(sp_tracks)} for {len(local_tracks)}', end='')
 
-    failed = 0
+    failed = []
+
+    track_names = [track['name'] for track in local_tracks]
     for track in local_tracks:
 
+        track['name'] = filter(
+            collection=track_names, title=track_name)
         track_name = track['name']
 
-        track_name = filter(collection=[track['name']
-                            for track in local_tracks], title=track_name)
-
         is_found, sp_track = get_corresponding_release(
-            track, sp_tracks, 'track')
+            track, sp_tracks, 'track', custom_options={'duration': track['duration']})
 
         if is_found:
             # TRACK METADATA
@@ -118,10 +118,16 @@ for album in albums:
             except:
                 pass
         else:
-            print(f'[red]{track_name}')
-            failed += 1
+            # print(f'[red]{track_name}')
+            failed.append(track_name)
 
-    print(f'{failed}/{len(local_tracks)} failed\n')
+    print(
+        f' -- [green]{round((1 - len(failed) / len(local_tracks)) * 100, 1)}%\n')
+
+    for track in failed:
+        print(f'[red]{track}')
+
+    # print(f'{len(local_tracks) - failed}/{len(local_tracks)} Found\n')
 
     # command = input('Press Enter to continue... \n')
 
