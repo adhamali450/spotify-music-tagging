@@ -1,7 +1,7 @@
 from directory_tree import display_tree
 import re
 import os
-from utils import duration
+from utils import local_release_duration, filter
 from format import *
 
 __artist_dir = None
@@ -63,7 +63,7 @@ def fetch_local_albums(root_path=None, miscs=[], exclude=[]):
                 {
                     'name': track.split('\\')[-1],
                     'path': track,
-                    'duration': duration(track)
+                    'duration': local_release_duration(track)
                 }
                 for track in fetch_local_tracks(full_path)
             ],
@@ -73,9 +73,6 @@ def fetch_local_albums(root_path=None, miscs=[], exclude=[]):
         album['total_tracks'] = len(album['tracks'])
 
         albums.append(album)
-
-    # clean_albums = filter(collection=[album[0] for album in albums])
-    # return [(clean_albums[i], albums[i][1]) for i in range(len(albums))]
 
     return albums
 
